@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: maxstudio_postgres
+    environment:
+      POSTGRES_DB: maxstudio
+      POSTGRES_USER: maxstudio
+      POSTGRES_PASSWORD: maxstudio
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: maxstudio_jellyfin
+    ports:
+      - "8096:8096"
+    environment:
+      - TZ=UTC
+    volumes:
+      - jellyfin_config:/config
+      - jellyfin_cache:/cache
+      - jellyfin_library:/media
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: maxstudio_backend
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - POSTGRES_DB=maxstudio
+      - POSTGRES_USER=maxstudio
+      - POSTGRES_PASSWORD=maxstudio
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - JELLYFIN_URL=http://jellyfin:8096
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}
+      - JELLYFIN_USER_ID=${JELLYFIN_USER_ID:-}
+      - JELLYFIN_LIBRARY_PATH=/app/media/jellyfin_library
+      - SIGNED_URL_SECRET=your-signed-url-secret
+      - CORS_ALLOW_ALL_ORIGINS=true
+    volumes:
+      - backend_media:/app/media
+      - jellyfin_library:/app/media/jellyfin_library
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - jellyfin
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: maxstudio_frontend
+    environment:
+      - NEXT_PUBLIC_GRAPHQL_URL=http://localhost:8000/graphql/
+      - NEXT_PUBLIC_BACKEND_ORIGIN=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: maxstudio_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  # Mobile build service (for CI/CD)
+  mobile_build:
+    image: flutter/flutter:stable
+    container_name: maxstudio_mobile_build
+    volumes:
+      - ./mobile:/app
+      - mobile_build_cache:/root/.pub-cache
+    working_dir: /app
+    command: >
+      sh -c "
+        flutter pub get &&
+        flutter build apk --release &&
+        flutter build ios --release --no-codesign
+      "
+    profiles:
+      - build
+
+volumes:
+  postgres_data:
+  jellyfin_config:
+  jellyfin_cache:
+  jellyfin_library:
+  backend_media:
+  mobile_build_cache:
+
+
