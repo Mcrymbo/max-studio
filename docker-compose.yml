@@ -87,7 +87,7 @@ services:
 
   # Mobile build service (for CI/CD)
   mobile_build:
-    image: flutter/flutter:stable
+    image:  ghcr.io/cirruslabs/flutter:stable
     container_name: maxstudio_mobile_build
     volumes:
       - ./mobile:/app

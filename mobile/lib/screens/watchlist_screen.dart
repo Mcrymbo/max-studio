@@ -118,3 +118,4 @@ class WatchlistScreen extends StatelessWidget {
   }
 }
 
+
