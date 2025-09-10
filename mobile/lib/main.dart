@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,10 +46,7 @@ class MyApp extends StatelessWidget {
       client: client,
       child: MaterialApp(
         title: 'Max Studio',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
+        theme: buildMaxTheme(),
         home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
       ),
     );
